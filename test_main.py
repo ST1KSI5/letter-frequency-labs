@@ -68,5 +68,81 @@ class ScalingTests(unittest.TestCase):
         render_histogram(counts)
         self.assertEqual(counts, original)
 
-if __name__ == "__main__": unittest.main()
+class ThresholdTests(unittest.TestCase):
+    def test_filters_inclusively_without_changing_totals(self):
+        counts = {"а": 4, "б": 2, "в": 1}
+        result = render_histogram(counts, 2)
+        self.assertIn("а ", result)
+        self.assertIn("б ", result)
+        self.assertNotIn("в #", result)
+        self.assertIn("Усього літер: 7; різних: 3", result)
+        self.assertIn("Показано різних літер: 2; поріг: 2.", result)
+        self.assertEqual(counts, {"а": 4, "б": 2, "в": 1})
 
+    def test_exact_maximum_boundary(self):
+        result = render_histogram({"а": 4, "б": 2}, 4)
+        self.assertIn("а ", result)
+        self.assertNotIn("б #", result)
+
+    def test_no_matches_and_empty_input(self):
+        self.assertEqual(render_histogram({"а": 4}, 5),
+                         "Літер із частотою не меншою за 5 не знайдено.")
+        self.assertEqual(render_histogram({}, 2), "Літер не знайдено.")
+
+    def test_invalid_threshold_api(self):
+        for value in (0, -1, 1.5, True, "2"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                render_histogram({"а": 4}, value)
+
+    def test_cli_threshold(self):
+        from unittest.mock import patch
+        output = io.StringIO()
+        with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
+            self.assertEqual(main(["--min-count", "2"]), 0)
+        self.assertIn("а ", output.getvalue())
+        self.assertIn("б ", output.getvalue())
+        self.assertNotIn("в #", output.getvalue())
+
+    def test_cli_invalid_thresholds(self):
+        for value in ("0", "-1", "1.5", "abc"):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    main(["--min-count", value])
+                self.assertEqual(error.exception.code, 2)
+
+    def test_file_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.txt"
+            path.write_text("Аааа\nБбв", encoding="utf-8-sig")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(main(["--file", str(path), "--min-count", "2"]), 0)
+            self.assertNotIn("в #", output.getvalue())
+
+class CombinedFeatureTests(unittest.TestCase):
+    def test_both_tasks_in_one_cli_run(self):
+        from unittest.mock import patch
+        output = io.StringIO()
+        with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
+            self.assertEqual(main(["--min-count", "2"]), 0)
+        result = output.getvalue()
+        self.assertIn("а " + "#" * 50 + " 4", result)
+        self.assertIn("б " + "#" * 25 + " 2", result)
+        self.assertNotIn("в #", result)
+        self.assertIn("Усього літер: 7; різних: 3", result)
+
+    def test_threshold_above_maximum_is_successful_cli_result(self):
+        from unittest.mock import patch
+        output = io.StringIO()
+        with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
+            self.assertEqual(main(["--min-count", "5"]), 0)
+        self.assertIn("не знайдено", output.getvalue())
+        self.assertNotIn("#", output.getvalue())
+
+    def test_filtered_tied_maxima_are_both_fifty(self):
+        result = render_histogram({"а": 4, "б": 4, "в": 1}, 4)
+        self.assertIn("а " + "#" * 50 + " 4", result)
+        self.assertIn("б " + "#" * 50 + " 4", result)
+        self.assertNotIn("в #", result)
+
+if __name__ == "__main__": unittest.main()
