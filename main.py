@@ -1,6 +1,9 @@
 """Частотний аналіз літер. Варіант 7. Python 3.10+."""
 
 import unicodedata
+import argparse
+import sys
+from pathlib import Path
 
 def count_letters(text):
     counts = {}
@@ -23,9 +26,13 @@ def render_histogram(counts):
         lines.append("Діаграми довші за 60 символів скорочено; кількості точні.")
     return "\n".join(lines)
 
-def main():
-    text = input("Введіть текст: ")
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Підрахунок літер і символьна діаграма частот.")
+    parser.add_argument("--file", type=Path, help="Шлях до текстового файлу UTF-8")
+    args = parser.parse_args(argv)
+    text = args.file.read_text(encoding="utf-8-sig") if args.file else input("Введіть текст: ")
     print(render_histogram(count_letters(text)))
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
