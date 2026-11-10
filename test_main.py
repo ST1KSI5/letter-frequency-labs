@@ -17,11 +17,11 @@ class FrequencyTests(unittest.TestCase):
     def test_empty_counter(self):
         self.assertEqual(count_letters("123 !"), {})
     def test_chart(self):
-        self.assertIn("а ## 2", render_histogram({"а":2}))
+        self.assertIn("а "+"#"*50+" 2", render_histogram({"а":2}))
     def test_long_chart(self):
         result=render_histogram({"а":100})
-        self.assertIn("#"*60+"… 100", result)
-        self.assertNotIn("#"*61, result)
+        self.assertIn("#"*50+" 100", result)
+        self.assertNotIn("#"*51, result)
     def run_input(self,text):
         from unittest.mock import patch
         output=io.StringIO()
@@ -37,11 +37,36 @@ class FrequencyTests(unittest.TestCase):
             p=Path(d)/"text.txt"; p.write_text("Їжак\nїсть",encoding="utf-8-sig")
             out=io.StringIO()
             with contextlib.redirect_stdout(out): self.assertEqual(main(["--file",str(p)]),0)
-            self.assertIn("ї ## 2",out.getvalue())
+            self.assertIn("ї "+"#"*50+" 2",out.getvalue())
     def test_bad_file(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"bad.txt"; p.write_bytes(b"\xff\xfe")
             with contextlib.redirect_stderr(io.StringIO()): self.assertEqual(main(["--file",str(p)]),2)
     def test_missing_file(self):
         with contextlib.redirect_stderr(io.StringIO()): self.assertEqual(main(["--file","__missing_7__.txt"]),2)
+class ScalingTests(unittest.TestCase):
+    def test_relative_widths(self):
+        result = render_histogram({"а": 4, "б": 2})
+        self.assertIn("а " + "#" * 50 + " 4", result)
+        self.assertIn("б " + "#" * 25 + " 2", result)
+
+    def test_single_letter_and_tied_maxima(self):
+        self.assertIn("а " + "#" * 50 + " 1", render_histogram({"а": 1}))
+        result = render_histogram({"а": 3, "б": 3})
+        self.assertIn("а " + "#" * 50 + " 3", result)
+        self.assertIn("б " + "#" * 50 + " 3", result)
+
+    def test_rounding_half_up_and_visible_rare_letter(self):
+        result = render_histogram({"а": 100, "б": 1})
+        self.assertIn("б # 1", result)
+        result = render_histogram({"а": 100, "б": 3})
+        self.assertIn("б ## 3", result)
+
+    def test_does_not_mutate_counts(self):
+        counts = {"б": 2, "а": 4}
+        original = counts.copy()
+        render_histogram(counts)
+        self.assertEqual(counts, original)
+
 if __name__ == "__main__": unittest.main()
+

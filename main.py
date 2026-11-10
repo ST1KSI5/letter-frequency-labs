@@ -15,16 +15,14 @@ def count_letters(text):
 def render_histogram(counts):
     if not counts:
         return "Літер не знайдено."
-    lines = ["Літера | Діаграма | Кількість"]
+    max_count = max(counts.values())
+    lines = ["Літера | Діаграма (максимум 50 символів) | Кількість"]
     for letter, count in sorted(counts.items()):
-        bar = "#" * min(count, 60)
-        if count > 60:
-            bar += "…"
-        lines.append(f"{letter} {bar} {count}")
+        width = max(1, (count * 50 + max_count // 2) // max_count)
+        lines.append(f"{letter} {'#' * width} {count}")
     lines.append(f"Усього літер: {sum(counts.values())}; різних: {len(counts)}")
-    if max(counts.values()) > 60:
-        lines.append("Діаграми довші за 60 символів скорочено; кількості точні.")
     return "\n".join(lines)
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Підрахунок літер і символьна діаграма частот.")
