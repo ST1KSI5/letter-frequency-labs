@@ -30,8 +30,25 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Підрахунок літер і символьна діаграма частот.")
     parser.add_argument("--file", type=Path, help="Шлях до текстового файлу UTF-8")
     args = parser.parse_args(argv)
-    text = args.file.read_text(encoding="utf-8-sig") if args.file else input("Введіть текст: ")
-    print(render_histogram(count_letters(text)))
+    try:
+        text = args.file.read_text(encoding="utf-8-sig") if args.file else input("Введіть текст: ")
+    except UnicodeError:
+        print("Помилка: файл має бути збережений у UTF-8.", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Помилка читання файлу: {error.strerror or error}.", file=sys.stderr)
+        return 2
+    except (EOFError, KeyboardInterrupt):
+        print("Помилка: ввід перервано або текст не надано.", file=sys.stderr)
+        return 2
+    if not text.strip():
+        print("Помилка: введіть непорожній текст із літерами.", file=sys.stderr)
+        return 2
+    counts = count_letters(text)
+    if not counts:
+        print("Помилка: текст не містить літер; цифри й розділові знаки не враховуються.", file=sys.stderr)
+        return 2
+    print(render_histogram(counts))
     return 0
 
 if __name__ == "__main__":
