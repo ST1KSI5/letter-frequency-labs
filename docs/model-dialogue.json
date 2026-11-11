@@ -1,0 +1,12 @@
+[
+  {
+    "prompt": "Ти мовна модель, яка готує фрагмент коду на запит для навчального проєкту. Відповідь буде збережена дослівно до перевірки. Напиши лише код Python 3.10 функції scale_bars(values, width=50): вхід — список невід'ємних цілих частот; вихід — список цілих довжин стовпчиків у межах 0..width. Нульові частоти мають нульову довжину, найбільша додатна — width, інші пропорційні; для додатної частоти мінімум 1. Підтримай порожній список, однакові додатні значення та всі нулі. width — ціле число від 1 до 200; для неприпустимих аргументів — ValueError. Жодних залежностей. Згенеруй природну реалізацію для подальшої незалежної перевірки; навмисні помилки не додавай. Не користуйся інструментами, не змінюй файли. Поверни тільки функцію без Markdown.",
+    "response": "def scale_bars(values, width=50):\n    if type(width) is not int or not 1 <= width <= 200:\n        raise ValueError(\"width must be an integer between 1 and 200\")\n    if not isinstance(values, list):\n        raise ValueError(\"values must be a list of non-negative integers\")\n    if any(type(value) is not int or value < 0 for value in values):\n        raise ValueError(\"values must contain only non-negative integers\")\n\n    if not values:\n        return []\n\n    maximum = max(values)\n    if maximum == 0:\n        return [0] * len(values)\n\n    return [\n        0 if value == 0 else max(1, (value * width + maximum // 2) // maximum)\n        for value in values\n    ]",
+    "sha256": "93ed9bae295402b509a723e4b72cdde1ddf5035a677b30bbd57e8f2384774828"
+  },
+  {
+    "prompt": "Напиши більш лаконічну альтернативну реалізацію scale_bars з тим самим контрактом, використовуючи звичайне ділення для пропорцій і вбудовану round для перетворення довжини на ціле. Збережи перевірки аргументів і поведінку для порожнього списку, однакових додатних значень та всіх нулів. Поверни тільки функцію без Markdown",
+    "response": "def scale_bars(values, width=50):\n    if type(width) is not int or not 1 <= width <= 200:\n        raise ValueError(\"width must be an integer between 1 and 200\")\n    if not isinstance(values, list) or any(\n        type(v) is not int or v < 0 for v in values\n    ):\n        raise ValueError(\"values must be a list of non-negative integers\")\n\n    peak = max(values, default=0)\n    if not peak:\n        return [0] * len(values)\n    return [max(1, round(v / peak * width)) if v else 0 for v in values]",
+    "sha256": "70e3f47f1a6cc13f4a398e3ad339d2cc9e72af4012b1598b73451eb0ae050630"
+  }
+]
