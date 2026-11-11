@@ -20,7 +20,11 @@ def render_histogram(counts, min_count=1):
         return "Літер не знайдено."
     visible = {letter: count for letter, count in counts.items() if count >= min_count}
     if not visible:
-        return f"Літер із частотою не меншою за {min_count} не знайдено."
+        return "\n".join([
+            f"Літер із частотою не меншою за {min_count} не знайдено.",
+            f"Усього літер: {sum(counts.values())}; різних: {len(counts)}",
+            f"Показано різних літер: 0; поріг: {min_count}.",
+        ])
     max_count = max(visible.values())
     lines = [f"Літера | Діаграма (максимум 50 символів; поріг: {min_count}) | Кількість"]
     for letter, count in sorted(visible.items()):
