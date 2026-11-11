@@ -2,6 +2,9 @@
 
 import unicodedata
 import argparse
+import contextlib
+import io
+from vendor.zanalyze_histogram import print_histogram
 import sys
 from pathlib import Path
 
@@ -12,7 +15,7 @@ def count_letters(text):
             counts[char] = counts.get(char, 0) + 1
     return dict(sorted(counts.items()))
 
-def render_histogram(counts, min_count=1):
+def render_histogram(counts, min_count=1, chart_style="ascii"):
     """Відібрати частоти включно з порогом і масштабувати стовпчики до 50.
 
     counts зіставляє літери з додатними цілими частотами, як count_letters.
@@ -32,6 +35,18 @@ def render_histogram(counts, min_count=1):
             f"Усього літер: {sum(counts.values())}; різних: {len(counts)}",
             f"Показано різних літер: 0; поріг: {min_count}.",
         ])
+    if chart_style == "blocks":
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            print_histogram("Частоти літер (zanalyze)", sorted(visible.items()),
+                            sum(counts.values()), "Літера", width=50)
+        result = output.getvalue().rstrip("\n")
+        result += f"\nУсього літер: {sum(counts.values())}; різних: {len(counts)}"
+        if len(visible) != len(counts):
+            result += f"\nПоказано різних літер: {len(visible)}; поріг: {min_count}."
+        return result
+    if chart_style != "ascii":
+        raise ValueError("Невідомий стиль діаграми.")
     max_count = max(visible.values())
     lines = [f"Літера | Діаграма (максимум 50 символів; поріг: {min_count}) | Кількість"]
     for letter, count in sorted(visible.items()):
@@ -47,6 +62,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Підрахунок літер і символьна діаграма частот.")
     parser.add_argument("--file", type=Path, help="Шлях до текстового файлу UTF-8")
     parser.add_argument("--min-count", type=int, default=1, help="Мінімальна частота літери (ціле число від 1)")
+    parser.add_argument("--chart-style", choices=["ascii", "blocks"], default="ascii",
+                        help="Стиль діаграми: # або блоки zanalyze (zlib)")
     args = parser.parse_args(argv)
     if args.min_count < 1:
         parser.error("Поріг частоти має бути цілим числом від 1.")
@@ -68,7 +85,7 @@ def main(argv=None):
     if not counts:
         print("Помилка: текст не містить літер; цифри й розділові знаки не враховуються.", file=sys.stderr)
         return 2
-    print(render_histogram(counts, args.min_count))
+    print(render_histogram(counts, args.min_count, args.chart_style))
     return 0
 
 if __name__ == "__main__":
