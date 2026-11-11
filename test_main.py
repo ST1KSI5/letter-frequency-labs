@@ -85,10 +85,12 @@ class ThresholdTests(unittest.TestCase):
         self.assertNotIn("б #", result)
 
     def test_no_matches_and_empty_input(self):
-        self.assertEqual(render_histogram({"а": 4}, 5),
+        counts = {"а": 4}
+        self.assertEqual(render_histogram(counts, 5),
                          "Літер із частотою не меншою за 5 не знайдено.\n"
                          "Усього літер: 4; різних: 1\n"
                          "Показано різних літер: 0; поріг: 5.")
+        self.assertEqual(counts, {"а": 4})
         self.assertEqual(render_histogram({}, 2), "Літер не знайдено.")
 
     def test_invalid_threshold_api(self):
@@ -117,13 +119,15 @@ class ThresholdTests(unittest.TestCase):
             path = Path(directory) / "input.txt"
             path.write_text("Аааа\nБбв", encoding="utf-8-sig")
             output = io.StringIO()
-            with contextlib.redirect_stdout(output):
+            errors = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
                 self.assertEqual(main(["--file", str(path), "--min-count", "2"]), 0)
             self.assertIn("а " + "#" * 50 + " 4", output.getvalue().splitlines())
             self.assertIn("б " + "#" * 25 + " 2", output.getvalue().splitlines())
             self.assertIn("Усього літер: 7; різних: 3", output.getvalue().splitlines())
             self.assertIn("Показано різних літер: 2; поріг: 2.", output.getvalue().splitlines())
             self.assertNotIn("в #", output.getvalue())
+            self.assertEqual(errors.getvalue(), "")
 
 class CombinedFeatureTests(unittest.TestCase):
     def test_both_tasks_in_one_cli_run(self):
@@ -140,10 +144,15 @@ class CombinedFeatureTests(unittest.TestCase):
     def test_threshold_above_maximum_is_successful_cli_result(self):
         from unittest.mock import patch
         output = io.StringIO()
-        with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
+        errors = io.StringIO()
+        with patch("builtins.input", return_value="ааааббв"), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
             self.assertEqual(main(["--min-count", "5"]), 0)
         self.assertIn("не знайдено", output.getvalue())
+        self.assertIn("Усього літер: 7; різних: 3", output.getvalue().splitlines())
+        self.assertIn("Показано різних літер: 0; поріг: 5.", output.getvalue().splitlines())
         self.assertNotIn("#", output.getvalue())
+        self.assertEqual(errors.getvalue(), "")
 
     def test_filtered_tied_maxima_are_both_fifty(self):
         result = render_histogram({"а": 4, "б": 4, "в": 1}, 4)
