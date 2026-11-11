@@ -13,14 +13,25 @@ def count_letters(text):
     return dict(sorted(counts.items()))
 
 def render_histogram(counts, min_count=1):
-    """Filter letters inclusively, then scale visible bars to a maximum of 50."""
+    """Відібрати частоти включно з порогом і масштабувати стовпчики до 50.
+
+    counts зіставляє літери з додатними цілими частотами, як count_letters.
+    Порожній counts дає лише повідомлення про відсутність літер. Для
+    непорожнього counts початкові підсумки зберігаються навіть тоді, коли
+    поріг приховує всі літери; тоді показано нуль різних літер.
+    Вхідний словник не змінюється.
+    """
     if type(min_count) is not int or min_count < 1:
         raise ValueError("Поріг частоти має бути цілим числом від 1.")
     if not counts:
         return "Літер не знайдено."
     visible = {letter: count for letter, count in counts.items() if count >= min_count}
     if not visible:
-        return f"Літер із частотою не меншою за {min_count} не знайдено."
+        return "\n".join([
+            f"Літер із частотою не меншою за {min_count} не знайдено.",
+            f"Усього літер: {sum(counts.values())}; різних: {len(counts)}",
+            f"Показано різних літер: 0; поріг: {min_count}.",
+        ])
     max_count = max(visible.values())
     lines = [f"Літера | Діаграма (максимум 50 символів; поріг: {min_count}) | Кількість"]
     for letter, count in sorted(visible.items()):

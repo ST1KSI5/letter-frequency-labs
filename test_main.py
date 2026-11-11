@@ -72,8 +72,8 @@ class ThresholdTests(unittest.TestCase):
     def test_filters_inclusively_without_changing_totals(self):
         counts = {"а": 4, "б": 2, "в": 1}
         result = render_histogram(counts, 2)
-        self.assertIn("а ", result)
-        self.assertIn("б ", result)
+        self.assertIn("а " + "#" * 50 + " 4", result.splitlines())
+        self.assertIn("б " + "#" * 25 + " 2", result.splitlines())
         self.assertNotIn("в #", result)
         self.assertIn("Усього літер: 7; різних: 3", result)
         self.assertIn("Показано різних літер: 2; поріг: 2.", result)
@@ -81,12 +81,16 @@ class ThresholdTests(unittest.TestCase):
 
     def test_exact_maximum_boundary(self):
         result = render_histogram({"а": 4, "б": 2}, 4)
-        self.assertIn("а ", result)
+        self.assertIn("а " + "#" * 50 + " 4", result.splitlines())
         self.assertNotIn("б #", result)
 
     def test_no_matches_and_empty_input(self):
-        self.assertEqual(render_histogram({"а": 4}, 5),
-                         "Літер із частотою не меншою за 5 не знайдено.")
+        counts = {"а": 4}
+        self.assertEqual(render_histogram(counts, 5),
+                         "Літер із частотою не меншою за 5 не знайдено.\n"
+                         "Усього літер: 4; різних: 1\n"
+                         "Показано різних літер: 0; поріг: 5.")
+        self.assertEqual(counts, {"а": 4})
         self.assertEqual(render_histogram({}, 2), "Літер не знайдено.")
 
     def test_invalid_threshold_api(self):
@@ -99,8 +103,8 @@ class ThresholdTests(unittest.TestCase):
         output = io.StringIO()
         with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
             self.assertEqual(main(["--min-count", "2"]), 0)
-        self.assertIn("а ", output.getvalue())
-        self.assertIn("б ", output.getvalue())
+        self.assertIn("а " + "#" * 50 + " 4", output.getvalue().splitlines())
+        self.assertIn("б " + "#" * 25 + " 2", output.getvalue().splitlines())
         self.assertNotIn("в #", output.getvalue())
 
     def test_cli_invalid_thresholds(self):
@@ -115,9 +119,15 @@ class ThresholdTests(unittest.TestCase):
             path = Path(directory) / "input.txt"
             path.write_text("Аааа\nБбв", encoding="utf-8-sig")
             output = io.StringIO()
-            with contextlib.redirect_stdout(output):
+            errors = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
                 self.assertEqual(main(["--file", str(path), "--min-count", "2"]), 0)
+            self.assertIn("а " + "#" * 50 + " 4", output.getvalue().splitlines())
+            self.assertIn("б " + "#" * 25 + " 2", output.getvalue().splitlines())
+            self.assertIn("Усього літер: 7; різних: 3", output.getvalue().splitlines())
+            self.assertIn("Показано різних літер: 2; поріг: 2.", output.getvalue().splitlines())
             self.assertNotIn("в #", output.getvalue())
+            self.assertEqual(errors.getvalue(), "")
 
 class CombinedFeatureTests(unittest.TestCase):
     def test_both_tasks_in_one_cli_run(self):
@@ -134,10 +144,15 @@ class CombinedFeatureTests(unittest.TestCase):
     def test_threshold_above_maximum_is_successful_cli_result(self):
         from unittest.mock import patch
         output = io.StringIO()
-        with patch("builtins.input", return_value="ааааббв"), contextlib.redirect_stdout(output):
+        errors = io.StringIO()
+        with patch("builtins.input", return_value="ааааббв"), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
             self.assertEqual(main(["--min-count", "5"]), 0)
         self.assertIn("не знайдено", output.getvalue())
+        self.assertIn("Усього літер: 7; різних: 3", output.getvalue().splitlines())
+        self.assertIn("Показано різних літер: 0; поріг: 5.", output.getvalue().splitlines())
         self.assertNotIn("#", output.getvalue())
+        self.assertEqual(errors.getvalue(), "")
 
     def test_filtered_tied_maxima_are_both_fifty(self):
         result = render_histogram({"а": 4, "б": 4, "в": 1}, 4)
